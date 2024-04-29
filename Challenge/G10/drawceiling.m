@@ -1,0 +1,67 @@
+function [GeIm] = drawceiling(EstimatedVertex,rough_coefficient,OrIm)
+
+% Variables
+
+% rough_coefficient % Resolution（preview: 0.05, lowresolution: 0.01, normal:0.005, highresolution: 0.001）(global variable 的可能性)
+% OrIm % Should be a rows by cols by 3 matrix. ouble format.
+
+%     worldVertex;             % 3D coordinate of mesh vertices after transform. [x,y,z]     
+                               % local variable independent in every single
+                               % mesh
+                               % anticlockwise counting the points
+%     screenVertex;              % 2D coordinate of mesh vertices.[sx,sy]
+%     EstimatedVertex;          % 5D coordinate of Vertices from 5 planes (1-13), before RT.[sx;sy;x;y;z] % global
+%     GravityPoint3D;           % Gravity point of every mesh in 3D, after RT. local
+%     GravityPoint2D;           % transform Gravity Point from 3D to 2D. local
+%     ColorofGravityPoint;      % get color of the Gravity Point. local
+worldVertex = zeros(3,4);
+GravityPoint3D = zeros(3,1);
+NewImage = zeros(size(OrIm,1),size(OrIm,2),size(OrIm,3));
+GeIm = NewImage;
+screenVertex = zeros(2,4);
+screenPixelVertex = zeros(2,4);
+%% ceiling (z:7~9, x:7~8)
+    % vertices 7,8,10,11
+    worldVertex(2,:) = EstimatedVertex(4,8); % Vertices of the mesh on the same plane (Y = 0);
+
+    for k = EstimatedVertex(5,8):rough_coefficient:EstimatedVertex(5,10) % from z7 to z9
+
+        worldVertex(3,[1,2]) = k; % Z of 1. and 4. point of the mesh equals to k (7,8)
+        worldVertex(3,[3,4]) = k + rough_coefficient; % z coordinate of 2. and 3. should be k + Coeff. (10,11)
+
+        for l = EstimatedVertex(3,8):rough_coefficient:EstimatedVertex(3,9) % from x7 to x8
+
+            worldVertex(1,[1,4]) = l; % x of 1. and 4. is l. (7,9)
+            worldVertex(1,[2,3]) = l+rough_coefficient; % x of 2. and 3. is l + Coeff.  (8,10)
+
+%             for i = 1:1:4   % get post 2D mesh coordi.
+                screenVertex = getScreenCoordinates(worldVertex);
+%             end
+
+            % get gravitypoint in 3D of every unit
+            GravityPoint3D(1,1) = (worldVertex(1,1)+worldVertex(1,3))/2; % x
+            GravityPoint3D(2,1) = (worldVertex(2,1)+worldVertex(2,3))/2; % y
+            GravityPoint3D(3,1) = (worldVertex(3,1)+worldVertex(3,3))/2; % z
+
+            % convert gravitypoint from post 3D to pre 2D
+            GravityPoint2D = getInitialScreenCoordinates(GravityPoint3D);
+
+            % Get color from original image of the GravityPoint, 1x1x3
+            ColorGravityPoint = screenCoordinates2sourceImageColor(GravityPoint2D,OrIm);
+
+%             for j = 1:1:4
+                screenPixelVertex = getPixelCoordinate(screenVertex,OrIm); % [x;y]
+%             end
+                screenPixelx = screenPixelVertex(1,:);
+                screenPixely = screenPixelVertex(2,:);
+            % set color to the new image
+                NewImage = setColor(screenPixelx,screenPixely,size(OrIm,1),size(OrIm,2),ColorGravityPoint,OrIm);
+                GeIm = GeIm+NewImage;
+%                 imshow(GeIm)
+%             NewImage(screenPixelVertex(2,4):screenPixelVertex(2,1),screenPixelVertex(1,1):screenPixelVertex(1,2),1) = ColorGravityPoint(:,:,1);
+%             NewImage(screenPixelVertex(2,4):screenPixelVertex(2,1),screenPixelVertex(1,1):screenPixelVertex(1,2),2) = ColorGravityPoint(:,:,2);
+%             NewImage(screenPixelVertex(2,4):screenPixelVertex(2,1),screenPixelVertex(1,1):screenPixelVertex(1,2),3) = ColorGravityPoint(:,:,3);
+        end
+    end
+end
+
